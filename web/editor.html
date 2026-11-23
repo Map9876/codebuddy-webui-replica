@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover,interactive-widget=overlays-content">
+<title>资源管理器 — CodeBuddy</title>
+<link rel="stylesheet" href="./codicon.css">
+<link rel="stylesheet" href="./editor.css">
+<link rel="stylesheet" href="./monaco/editor-DOgAgpTS.css">
+<link rel="stylesheet" href="./filetype-icons.css">
+</head>
+<body>
+<div id="root">
+
+  <!-- 资源管理器面板（依据 .file-tree，右上角 5-6 个操作 icon） -->
+  <aside id="explorer" class="explorer" data-panel="files">
+    <div class="ex-panel ex-files">
+      <div class="ex-title"><span>资源管理器</span></div>
+      <div class="ex-section">
+        <button class="ex-sec-toggle" title="/workspace"><span class="codicon codicon-chevron-down"></span> WORKSPACE</button>
+        <span class="ex-sec-actions">
+          <button id="act-newfile" class="ex-act" title="新建文件"><span class="codicon codicon-new-file"></span></button>
+          <button id="act-newfolder" class="ex-act" title="新建文件夹"><span class="codicon codicon-new-folder"></span></button>
+          <button id="act-opendir" class="ex-act" title="打开目录"><span class="codicon codicon-folder-opened"></span></button>
+          <button id="act-adddir" class="ex-act" title="添加目录"><span class="codicon codicon-add"></span></button>
+          <button id="act-refresh" class="ex-act" title="刷新"><span class="codicon codicon-refresh"></span></button>
+          <button id="act-collapse" class="ex-act" title="全部折叠"><span class="codicon codicon-collapse-all"></span></button>
+          <button id="act-hidden" class="ex-act" title="显示隐藏文件"><span class="codicon codicon-eye"></span></button>
+        </span>
+      </div>
+      <div id="file-tree" class="file-tree"><div class="ft-loading">加载中…</div></div>
+      <div class="ex-foot"><span class="codicon codicon-source-control"></span> main <span class="ex-foot-spacer"></span><span id="ex-hint">第 1 行，第 1 列</span></div>
+    </div>
+    <div class="ex-panel ex-search">
+      <div class="ex-title"><span>搜索</span></div>
+      <div class="ex-search-box"><span class="codicon codicon-search"></span><input id="ex-search-input" placeholder="在文件中搜索" autocomplete="off"></div>
+      <div id="ex-search-results" class="ex-search-results"></div>
+    </div>
+    <div class="ex-panel ex-scm">
+      <div class="ex-title"><span>源代码管理</span></div>
+      <div class="ex-section">更改 (30)</div>
+      <div id="ex-scm-list" class="ex-search-results"></div>
+    </div>
+    <div class="ex-panel ex-terminal">
+      <div class="ex-title"><span>终端</span></div>
+      <div style="padding:10px;color:#9cdcfe">bash 终端已在底部面板打开 ↓</div>
+    </div>
+  </aside>
+
+  <!-- 主编辑区 -->
+  <main class="workspace">
+    <div class="topbar">
+      <button id="btn-sidebar" class="top-icon" title="切换侧边栏"><span class="codicon codicon-layout-sidebar"></span></button>
+      <span class="top-sep"></span>
+      <button class="top-icon" title="后退"><span class="codicon codicon-arrow-left"></span></button>
+      <button class="top-icon" title="前进"><span class="codicon codicon-arrow-right"></span></button>
+      <div class="top-search" id="top-search-wrap"><span class="codicon codicon-search"></span><input id="top-search" placeholder="搜索 workspace" autocomplete="off"><span class="top-kbd">Ctrl+P</span></div>
+      <span class="top-spacer"></span>
+      <button class="top-icon" title="回到我的分身" id="btn-home"><span class="codicon codicon-home"></span></button>
+      <button id="btn-chat" class="top-icon" title="回到对话"><span class="codicon codicon-comment-discussion"></span></button>
+    </div>
+
+    <div id="editor-area" class="editor-area">
+      <div id="groups" class="groups">
+        <div class="editor-group" data-g="0">
+          <div class="tabs-bar">
+            <button id="btn-back-files" class="back-files-btn" title="返回文件列表" aria-label="返回文件列表"><span class="codicon codicon-arrow-left"></span></button>
+            <div id="tabs" class="tabs"></div>
+            <button id="btn-split" class="split-btn" title="拆分编辑器"><span class="codicon codicon-split-horizontal"></span></button>
+          </div>
+          <div id="editor-body" class="editor-body">
+            <div class="ed-empty">
+              <div class="ed-empty-logo"><img src="./codebuddy.svg" alt=""></div>
+              <div>选择左侧文件开始编辑</div>
+              <div class="ed-empty-sub">支持多标签 · 删除 · 下载 · Markdown 预览</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="terminal-panel" class="terminal-panel" hidden>
+        <div class="tp-head"><span class="tp-tab active">bash</span><span class="tp-spacer"></span><button id="tp-close" class="tp-icon" title="关闭终端面板">×</button></div>
+        <div id="tp-term" class="tp-term"></div>
+        <input id="tp-input" class="tp-input" placeholder="输入命令…" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="statusbar">
+        <span class="codicon codicon-git-branch"></span><span>main</span>
+        <span class="sb-spacer"></span>
+        <span id="sb-lncol">第 1 行，第 1 列</span>
+        <span id="sb-lang">纯文本</span>
+        <button id="btn-terminal-toggle" class="sb-btn" title="终端"><span class="codicon codicon-terminal"></span></button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- 新建文件/文件夹输入弹层 -->
+<div id="new-modal" class="modal" hidden>
+  <div class="modal-box">
+    <div id="modal-title" class="modal-title">新建文件</div>
+    <input id="modal-input" placeholder="名称" autocomplete="off">
+    <div class="modal-foot"><button id="modal-cancel" title="取消创建">取消</button><button id="modal-ok" class="primary" title="确认创建">创建</button></div>
+  </div>
+</div>
+<script>window.exports=window.exports||{};</script>
+<script src="./xterm-headless.js"></script>
+<script src="./xterm-render.js"></script>
+<script type="module" src="./monaco-bridge.js"></script>
+<script type="module" src="./monaco-loader.js"></script>
+<script src="./editor.js"></script>
+</body>
+</html>
