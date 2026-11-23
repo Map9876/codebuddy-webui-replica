@@ -1,3 +1,5 @@
+https://map9876.github.io/codebuddy-webui-replica/chat
+
 # CodeBuddy Web UI 复刻 — 对话 + 文件管理 + 文件编辑
 
 一个**前端仿 VS Code / CodeBuddy** 的纯前端页面：把终端里的 CodeBuddy 会话搬进浏览器，做成手机友好的对话界面，并配上 VS Code 风格的文件管理器与编辑器。**支持 Markdown 与 HTML 文档预览**。
