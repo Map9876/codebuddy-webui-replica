@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover,interactive-widget=overlays-content">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Terminal — workspace</title>
+<link rel="stylesheet" href="./codicon.css">
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<div id="app" class="monaco-workbench">
+  <!-- 终端工具栏（VS Code terminal pane actions）;user-select:none 让全选复制不带工具栏文字 -->
+  <div id="terminal-toolbar" unselectable="on" class="terminal-toolbar">
+    <!-- 左侧：切换终端下拉（显示当前终端名 + 警告） -->
+    <button id="term-picker" class="term-picker" title="切换终端">
+      <span class="codicon codicon-terminal"></span>
+      <span id="term-picker-name">Terminal</span>
+      <span class="codicon codicon-chevron-down" style="font-size:11px"></span>
+    </button>
+    <div class="toolbar-spacer"></div>
+    <!-- TUI 上下选择键（手机键盘无方向键时用；仅 codebuddy TUI 显示） -->
+    <button class="taction" id="btn-up" title="上一条" hidden><span class="codicon codicon-chevron-up"></span></button>
+    <button class="taction" id="btn-down" title="下一条" hidden><span class="codicon codicon-chevron-down"></span></button>
+    <span id="space-hint" title="按空格回到最底部" style="color:var(--fg-muted);font-size:10px;opacity:.85;white-space:nowrap;transition:opacity .3s;flex:0 0 auto">
+      <span class="codicon codicon-arrow-down" style="vertical-align:middle"></span><span class="sh-text">空格回底部</span>
+    </span>
+    <!-- 右侧：新建 + / 分栏 / ···（删除在菜单里，防误触）/ × -->
+    <button class="taction" id="btn-new" title="新建终端"><span class="codicon codicon-plus"></span></button>
+    <button class="taction" id="btn-split" title="拆分终端"><span class="codicon codicon-split-horizontal"></span></button>
+    <button class="taction" id="btn-menu" title="更多操作..."><span class="codicon codicon-ellipsis"></span></button>
+    <button class="taction" id="btn-close" title="关闭面板"><span class="codicon codicon-close"></span></button>
+  </div>
+
+  <!-- More Actions 菜单：仅一行「Kill Terminal」（VS Code 原文案），垃圾桶 icon，放这里避免右上角误触 -->
+  <div id="more-menu" unselectable="on" class="more-menu" hidden>
+    <div class="menu-item" data-act="kill" id="menu-kill">
+      <span class="codicon codicon-trash"></span><span>终止终端</span>
+    </div>
+    <div class="menu-sep"></div>
+    <div class="menu-item confirm-row" id="menu-confirm" hidden>
+      <span>确定终止此终端？</span>
+      <button id="btn-confirm-kill" class="confirm-btn" title="确认终止此终端">终止</button>
+      <button id="btn-cancel-kill" class="confirm-btn" title="取消终止操作">取消</button>
+    </div>
+  </div>
+
+  <!-- 右侧终端窄边栏：一列终端 icon，可收起/展开（仿 VS Code 终端 tabs 抽屉） -->
+  <div id="term-rail" unselectable="on" class="term-rail">
+    <div id="rail-sash" class="rail-sash" title="拖动调整大小"></div>
+    <button id="rail-toggle" class="rail-toggle" title="展开/收起终端列表"><span class="codicon codicon-chevron-right"></span></button>
+    <div id="rail-list" class="rail-list"></div>
+  </div>
+  <!-- 长按终端图标弹出的完整标题说明 -->
+  <div id="rail-tip" class="rail-tip" hidden unselectable="on"></div>
+
+  <!-- 终端列表抽屉（点 term-picker 展开，显示名字） -->
+  <div id="term-drawer" unselectable="on" class="term-drawer" hidden></div>
+
+  <!-- 终端内容区：log 与拆分副栏包在同一 flex 容器，分栏只作用于这一层（不影响顶部工具栏/右侧 rail） -->
+  <div id="term-area" class="term-area">
+    <main id="log" class="term-view" role="log" aria-live="polite"></main>
+    <!-- 拆分终端：右侧独立终端视图（iframe 隔离实例，完整 PTY 流/输入） -->
+    <div id="split-host" class="split-host" hidden></div>
+  </div>
+
+  <!-- 新建终端时的灰度缓冲动画（仿 VS Code profile quickpick 过渡） -->
+  <div id="creating" class="creating" hidden>
+    <div class="creating-box">
+      <div class="codicon codicon-loading codicon-modifier-spin"></div>
+      <div class="creating-text">Creating terminal…</div>
+    </div>
+  </div>
+
+  <!-- 输入：隐藏 textarea 接收输入法，点终端任意处聚焦；无底栏，输入内容直接接在终端末尾 -->
+  <textarea id="input" class="hidden-input" rows="1" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
+
+  <!-- TUI 辅助键：手机无物理键盘时操作 codebuddy 对话框（真实提示 Enter to confirm / Esc to exit / ⇧tab to cycle） -->
+  <div id="tui-keys" class="tui-keys" hidden unselectable="on">
+    <button class="tkey" data-key="esc" title="Esc · 退出对话框"><span class="tkey-lbl">Esc</span></button>
+    <button class="tkey" data-key="stab" title="Shift+Tab · 切换权限模式"><span class="tkey-lbl">⇧Tab</span></button>
+    <button class="tkey" data-key="enter" title="Enter · 确认选中项"><span class="tkey-lbl">↵</span></button>
+  </div>
+  <button id="to-bottom" class="to-bottom" title="回到底部"><span class="codicon codicon-arrow-down"></span></button>
+</div>
+<script>window.exports=window.exports||{};</script>
+<script src="./xterm-headless.js"></script>
+<script src="./xterm-render.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>

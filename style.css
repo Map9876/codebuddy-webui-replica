@@ -1,0 +1,224 @@
+/* VS Code 终端面板外观 —— 色值取自 2026-light 主题实际渲染 (computed) */
+:root{
+  --editor-bg:#ffffff;          /* --vscode-editor-background */
+  --panel-bg:#fafafd;           /* --vscode-panel-background  —— 你看到的"不是纯白" */
+  --fg:#202020;                 /* --vscode-foreground */
+  --fg-muted:#606060;           /* --vscode-tab-inactiveForeground / icon.foreground */
+  --border:#f0f1f2;             /* --vscode-panel-border */
+  --tab-active-bg:#ffffff;      /* --vscode-tab-activeBackground */
+  --tab-inactive-bg:#fafafd;    /* --vscode-tab-inactiveBackground */
+  --sel:rgba(0,0,0,0.14);       /* --vscode-list-activeSelectionBackground */
+  --hover:rgba(0,0,0,0.08);     /* --vscode-list-hoverBackground */
+  --link:#0069cc;               /* --vscode-textLink-foreground */
+  --btn:#297aa0;                /* --vscode-button.background (dark+); light 用默认 */
+  --safe-bot:env(safe-area-inset-bottom,0px);
+  --safe-top:env(safe-area-inset-top,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;background:var(--panel-bg);color:var(--fg);
+  font:13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI","HarmonyOS Sans SC","Microsoft YaHei",sans-serif;
+  overscroll-behavior:none}
+button,textarea{font:inherit;color:inherit}
+/* 视口锁定：高度由 JS 启动时固定为 px（不用 dvh），软键盘弹出时布局绝不变化、不重排、不抖动 */
+#app{display:flex;flex-direction:column;height:100vh;width:100%;max-width:100%;overflow:hidden;background:var(--panel-bg)}
+
+/* 终端工具栏 —— user-select:none：全选复制只带终端文本，不带工具栏/终端名 */
+.terminal-toolbar{flex:0 0 auto;display:flex;align-items:center;gap:2px;padding:calc(4px + var(--safe-top)) 8px 4px;
+  background:var(--panel-bg);border-bottom:1px solid var(--border);height:36px;user-select:none;-webkit-user-select:none}
+.term-picker{display:flex;align-items:center;gap:6px;padding:3px 8px;border:none;border-radius:4px;
+  background:transparent;color:var(--fg);font-size:12px;max-width:46%;cursor:pointer}
+.term-picker:hover,.taction:hover{background:var(--hover)}
+/* 窄屏适配：终端标题收缩、按钮缩小，避免右侧按钮被挤出屏幕 */
+@media(max-width:360px){
+  .term-picker{max-width:34%;padding:3px 4px;font-size:11px;gap:3px}
+  .taction{width:24px;height:24px}
+  .terminal-toolbar{padding-left:4px;padding-right:4px;gap:1px}
+}
+.term-picker #term-picker-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.toolbar-spacer{flex:1 1 auto}
+.taction{flex:0 0 auto;width:28px;height:28px;display:flex;align-items:center;justify-content:center;
+  border:none;border-radius:4px;background:transparent;cursor:pointer;font-size:14px}
+
+/* More Actions 菜单 */
+.more-menu{position:absolute;right:8px;top:40px;z-index:20;min-width:250px;max-width:92vw;
+  background:var(--editor-bg);border:1px solid var(--border);border-radius:6px;
+  box-shadow:0 4px 16px rgba(0,0,0,.14);padding:4px 0;user-select:none;-webkit-user-select:none}
+.menu-item{display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding:6px 12px;font-size:12px;cursor:pointer;color:var(--fg)}
+.menu-item:hover{background:var(--sel)}
+.menu-item .key{color:var(--fg-muted);font-size:11px}
+.menu-sep{height:1px;background:var(--border);margin:4px 0}
+
+/* 右侧终端抽屉 */
+.term-drawer{position:absolute;right:0;top:38px;bottom:0;width:min(78vw,300px);z-index:15;
+  background:var(--panel-bg);border-left:1px solid var(--border);
+  box-shadow:-4px 0 16px rgba(0,0,0,.08);padding:6px 0;overflow-y:auto;user-select:none;-webkit-user-select:none}
+.drawer-item{display:flex;align-items:center;gap:8px;padding:7px 12px;cursor:pointer;font-size:13px;
+  border-left:2px solid transparent}
+.drawer-item:hover{background:var(--hover)}
+.drawer-item.active{background:var(--sel);border-left-color:var(--link)}
+.drawer-item .codicon{color:var(--fg-muted);font-size:14px}
+.drawer-item .d-name{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.drawer-item .d-id{color:var(--fg-muted);font-size:11px}
+
+/* 终端内容：协议转换后的朴素 chat DOM（pdf.js 模式） */
+.term-view{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  background:var(--panel-bg);padding:8px 10px;overscroll-behavior:contain;
+  font-family:ui-monospace,"Cascadia Mono",Menlo,Consolas,"HarmonyOS Sans SC",monospace;
+  font-size:13px;line-height:1.45;color:var(--fg)}
+.term-line{min-height:1.45em;white-space:pre-wrap;word-break:break-all}
+.term-line.in-line{color:var(--link)}
+.term-line.sysline{color:var(--fg-muted);font-style:italic}
+
+/* ===== 拆分终端（VS Code split terminal）=====
+   分栏只作用于 #term-area 这一层：#app 保持 column（工具栏顶部/rail 右侧/input 底部不受影响）
+   桌面：#log 与 #split-host 左右并排，中间 sash 可拖；手机窄屏：上下堆叠 */
+.term-area{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;position:relative}
+.term-area>#log{flex:1 1 auto;min-height:0}
+body.is-split .term-area{flex-direction:row}
+body.is-split #log{flex:1 1 0;min-width:0}
+.split-host{flex:0 0 50%;display:flex;flex-direction:row;background:var(--panel-bg);min-width:120px;position:relative}
+.split-host[hidden]{display:none}
+.split-sash{flex:0 0 6px;cursor:col-resize;background:var(--border);position:relative;touch-action:none}
+.split-sash::after{content:"";position:absolute;left:2px;top:0;bottom:0;width:2px;background:transparent;transition:background .1s}
+.split-sash:active::after{background:var(--btn,#297AA0)}
+.split-pane{flex:1 1 auto;position:relative;min-width:0}
+.split-frame{width:100%;height:100%;border:none;background:var(--panel-bg);display:block}
+/* 关闭按钮放副栏左上角：右侧有终端 rail(z-index:12)会遮挡右上角；top 让开 sash */
+.split-close{position:absolute;left:14px;top:8px;z-index:20;width:26px;height:26px;border:1px solid var(--border);border-radius:5px;
+  background:var(--panel);color:var(--fg-muted);cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+/* 分栏从属 iframe：隐藏 chrome 后让内容铺满，无右侧 padding */
+body.embed-terminal #log{padding-right:8px}
+@media(max-width:720px){
+  body.is-split .term-area{flex-direction:column}
+  .split-host{flex:0 0 50%;flex-direction:column;width:100%;height:50%}
+  .split-sash{cursor:row-resize;flex-basis:6px}
+  .split-sash::after{left:0;top:2px;bottom:auto;width:auto;height:2px}
+}
+#conn-state{color:var(--fg-muted);font-size:11px}
+
+/* 隐藏输入接收器：固定 1px、透明，点屏幕任意处 focus 它即可调出系统输入法。
+   关键：它 position:fixed 且不参与 flex 布局，键盘弹出时页面不重排/不抖动。 */
+.hidden-input{position:fixed;left:0;bottom:0;width:1px;height:1px;opacity:0;
+  border:none;outline:none;padding:0;margin:0;resize:none;z-index:-1;font-size:16px}
+
+/* 无底栏：正在输入的行直接作为终端内容流的最后一行（像原生终端），不独立占位 */
+.typing-inline{color:var(--fg);background:transparent}
+.caret-block{display:inline-block;width:7px;height:15px;background:var(--fg);
+  vertical-align:textbottom;margin-left:1px;animation:blink 1s step-end infinite}
+@keyframes blink{50%{opacity:0}}
+#conn-state{position:absolute;right:10px;top:8px;color:var(--fg-muted);font-size:11px;z-index:9}
+
+/* 删除确认行（双层防误触） */
+.confirm-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.confirm-btn{padding:4px 10px;border:1px solid var(--border);border-radius:4px;background:var(--editor-bg);cursor:pointer;font-size:12px}
+.confirm-btn:first-of-type{background:var(--link);color:#fff;border-color:var(--link)}
+
+/* TUI 输入区分隔线：手机窄屏不折行、压缩字距让 28 个 ─ 落在一行 */
+.term-line.hr-line{white-space:nowrap;letter-spacing:-1px;overflow:hidden}
+
+
+/* ===== 右侧终端窄边栏（一列 icon + 序号，可收起；拖宽后显示名字）===== */
+.term-rail{position:absolute;right:0;top:38px;bottom:0;width:56px;z-index:12;
+  background:var(--panel-bg);border-left:1px solid var(--border);
+  display:flex;flex-direction:column;align-items:stretch;gap:2px;padding:6px 0;
+  user-select:none;-webkit-user-select:none}
+/* 收起态：彻底隐藏列表，只留一个把手可点开 */
+.term-rail.collapsed{width:22px;padding:0;overflow:hidden;border-left:none}
+.term-rail.collapsed .rail-toggle{width:22px;min-width:22px}
+.term-rail.collapsed .rail-list{display:none}
+.rail-toggle{position:fixed;right:0;top:38px;z-index:16;height:26px;min-width:34px;display:flex;align-items:center;justify-content:center;
+  border:none;border-left:1px solid var(--border);background:var(--panel-bg);color:var(--fg-muted);cursor:pointer;font-size:14px}
+.term-rail:not(.collapsed) .rail-toggle .codicon{transform:rotate(180deg)}
+.rail-list{flex:1 1 auto;width:100%;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:2px;padding-top:26px}
+.rail-item{flex:0 0 auto;min-height:30px;display:flex;align-items:center;gap:2px;padding:0 5px;
+  border-radius:5px;color:var(--fg-muted);cursor:pointer;white-space:nowrap;overflow:hidden}
+.rail-item:hover{background:var(--hover)}
+.rail-item.active{background:var(--sel);color:var(--link)}
+.rail-item .codicon{flex:0 0 auto;font-size:14px}
+.rail-item .rail-num{flex:0 0 auto;font-size:12px;font-weight:700;color:var(--fg);min-width:16px;overflow:visible}
+.rail-item .rail-name{display:none;flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}
+/* 拖宽到 >=120px 显示终端名字（仿 VS Code 抽屉展开） */
+.term-rail.wide .rail-name{display:block}
+.term-rail.wide .rail-item{min-height:34px}
+/* 给 log 右侧留出 rail 宽度 */
+.term-view{padding-right:66px}
+/* 新建终端灰度缓冲动画 */
+.creating{position:absolute;inset:38px 0 0 0;z-index:30;background:rgba(250,250,253,.82);
+  display:flex;align-items:center;justify-content:center;animation:fadein .12s ease}
+.creating[hidden]{display:none}
+.creating-box{display:flex;flex-direction:column;align-items:center;gap:12px;
+  padding:22px 28px;border:1px solid var(--border);border-radius:10px;background:var(--editor-bg);
+  box-shadow:0 6px 24px rgba(0,0,0,.12)}
+.creating-box .codicon{font-size:24px;color:var(--link)}
+.creating-text{font-size:13px;color:var(--fg-muted)}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+
+/* ===== 拖动调整右侧栏宽度（仿 VS Code sash：4px 边缘，hover/拖动蓝色线）===== */
+.rail-sash{position:absolute;left:-5px;top:0;bottom:0;width:10px;cursor:ew-resize;z-index:5;touch-action:none;-webkit-user-drag:none}
+.rail-sash::before{content:"";position:absolute;left:3px;top:0;bottom:0;width:4px;background:transparent;transition:background .1s}
+.rail-sash.dragging::before{background:var(--link)}  /* 仅按住拖动时显示蓝色线，不 hover */
+.term-rail.collapsed .rail-sash{display:none}
+
+/* 彻底隔离复制范围：默认全局不可选，仅终端内容区可选（全选不会带上工具栏/侧栏/序号） */
+#app{user-select:none;-webkit-user-select:none}
+#app .term-view,#app .term-view *{user-select:text;-webkit-user-select:text}
+.typing-inline{user-select:none;-webkit-user-select:none}
+/* 原生终端光标：黑色矩形块 */
+.term-cursor{display:inline-block;width:8px;height:15px;background:var(--fg);vertical-align:textbottom}
+/* 回底部按钮：右下角偏上（大拇指舒适区），平滑动画 */
+.to-bottom{position:fixed;right:12px;bottom:76px;z-index:25;width:40px;height:40px;border:none;border-radius:50%;
+  background:var(--btn,#297AA0);color:#fff;font-size:18px;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 2px 10px rgba(0,0,0,.25);cursor:pointer;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+.to-bottom.show{opacity:.92;pointer-events:auto}
+.to-bottom:active{transform:scale(.9)}
+/* TUI 辅助键条：仅 codebuddy 对话框显示，补手机物理键盘缺失的 Esc/Shift+Tab/Enter */
+.tui-keys{position:fixed;right:12px;bottom:124px;z-index:24;display:flex;gap:4px}
+.tui-keys[hidden]{display:none}
+.tkey{width:38px;height:30px;border:1px solid var(--border);border-radius:6px;background:var(--panel-bg);
+  color:var(--fg);font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;
+  box-shadow:0 1px 6px rgba(0,0,0,.12);-webkit-user-select:none;user-select:none}
+.tkey:active{background:var(--hover)}
+#space-hint.blink{animation:hintblink 1.2s ease-in-out infinite}
+@keyframes hintblink{0%,100%{opacity:.9}50%{opacity:.35}}
+/* 窄屏：隐藏"空格回底部"文字只留图标（title 长按仍有注释），否则工具栏多出 6px 把关闭按钮挤出屏幕 */
+@media(max-width:430px){
+  #space-hint .sh-text{display:none}
+  #space-hint{padding:0 2px}
+}
+
+/* ===== 禁止右侧/中间区域滑动触发浏览器前进后退手势 =====
+   浏览器把靠近屏幕右缘的横向滑动当成"返回/前进"。左侧没有可横滑的溢出容器所以不触发；
+   右侧 rail/list/toggle/sash 有 overflow，手势被接管。pan-y 只允许纵向滚动，横向手势交还页面，
+   配合 html,body 的 overscroll-behavior:none 彻底阻断导航手势。 */
+html,body{overscroll-behavior-x:none;-webkit-overflow-scrolling:touch}
+.term-rail,.rail-list,.rail-toggle,.term-view{overscroll-behavior-x:contain;touch-action:pan-y}
+.rail-sash{touch-action:none}
+
+/* 强化不可复制：工具栏/右侧栏/菜单/抽屉的所有后代强制不可选（ !important 防覆盖） */
+#terminal-toolbar,#terminal-toolbar *,
+#term-rail,#term-rail *,
+#term-drawer,#term-drawer *,
+#more-menu,#more-menu *,
+#version-bar,#version-bar *{
+  user-select:none !important;-webkit-user-select:none !important;
+}
+
+/* ===== 终端列表文字用伪元素显示，全选/复制选不到（伪元素 content 不进选区）===== */
+#term-picker-name::before{content:attr(data-name)}
+.drawer-item .d-name::before{content:attr(data-name)}
+.drawer-item .d-id::before{content:attr(data-num)}
+.rail-item .rail-num::before{content:attr(data-num)}
+.rail-item .rail-name::before{content:attr(data-name)}
+/* 兜底：这些文字节点本身不含文本，伪元素不可选 */
+#term-picker-name,.drawer-item .d-name,.drawer-item .d-id,.rail-item .rail-num,.rail-item .rail-name{
+  -webkit-user-select:none!important;user-select:none!important;-webkit-touch-callout:none
+}
+
+/* 长按终端图标弹出的标题说明（伪元素 content，不可选中复制） */
+.rail-tip{position:fixed;z-index:60;max-width:70vw;padding:6px 10px;border-radius:6px;
+  background:var(--editor-bg);border:1px solid var(--border);box-shadow:0 3px 14px rgba(0,0,0,.18);
+  color:var(--fg);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  pointer-events:none;user-select:none!important;-webkit-user-select:none!important}
+.rail-tip[hidden]{display:none}
+.rail-tip::before{content:attr(data-name)}
